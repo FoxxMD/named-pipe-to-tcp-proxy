@@ -12,3 +12,5 @@ description = "Proxy all data from a Named Pipe to a specified TCP Proxy Server"
 [dependencies]
 clap = { version = "4.5.20", features = ["derive"] }
 tokio = { version = "1", features = ["net", "macros", "rt", "io-util"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }

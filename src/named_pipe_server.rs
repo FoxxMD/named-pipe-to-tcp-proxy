@@ -7,7 +7,9 @@
 //! 4. Needed because of the design of the Windows API
 
 use tokio::io;
-use tokio::net::windows::named_pipe::{self, NamedPipeServer};
+use tokio::net::windows::named_pipe::{self, ClientOptions, NamedPipeClient, NamedPipeServer};
+use tracing::*;
+use tokio::io::Interest;
 
 /// Creates and manages client connections for Named Pipe servers
 /// # Note
@@ -48,7 +50,7 @@ impl NamedPipeServerManager {
     /// to the Named Pipe Server.  
     /// After a client connects
     /// returns a Read/Write Stream
-    pub async fn accept(self: &mut Self) -> io::Result<NamedPipeServer> {
+    pub async fn accept(self: &mut Self) -> io::Result<NamedPipeClient> {
         // The reason this is needed is due to a peculiarity in the
         // Windows API where
         // After the first client connects to the server
@@ -56,13 +58,19 @@ impl NamedPipeServerManager {
         // The existing object handle becomes a connection stream
         // To the Connected Client
         // So every time, a new Server object has to be created
-        let server = self.options.create(&self.name)?;
+        let client = ClientOptions::new().open(&self.name)?;
+//        let ready = client.ready(Interest::READABLE | Interest::WRITABLE).await?;
+        //let server = self.options.create(&self.name)?;
+        info!("Named pipe server initiated");
+        // if ready.is_readable() && ready.is_writable() {
+        //     return Ok(client);
+        // }
         // Wait for a client to connect
-        server.connect().await?;
+       // server.connect().await?;
         // Upon client connection, the server object
         // becomes the client
         // This is a peculiarity of the Windows API
-        let stream = server;
-        return Ok(stream);
+        //let stream = server;
+       return Ok(client);
     }
 }

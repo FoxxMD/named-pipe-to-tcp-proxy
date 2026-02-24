@@ -5,13 +5,22 @@ use clap::Parser;
 use splice::splice;
 use tokio::{
     io,
-    net::{windows::named_pipe::NamedPipeServer, TcpStream},
+    net::{TcpListener, TcpStream, windows::named_pipe::{NamedPipeClient, NamedPipeServer}},
 };
+use tracing::*;
 
 /// Implement the `TryRead` trait for our structures  
 /// Remember that this is just needed because Tokio
 /// does not provide traits for the below functions
 impl splice::Readable for NamedPipeServer {
+    fn try_read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        Self::try_read(self, buf)
+    }
+    async fn readable(&self) -> io::Result<()> {
+        Self::readable(self).await
+    }
+}
+impl splice::Readable for NamedPipeClient {
     fn try_read(&self, buf: &mut [u8]) -> io::Result<usize> {
         Self::try_read(self, buf)
     }
@@ -52,21 +61,31 @@ struct Args {
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     let args = Args::parse();
+        tracing_subscriber::fmt::fmt()
+        // uses RUST_LOG env for filtering log levels and namespaces
+        //.with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
     use named_pipe_server::NamedPipeServerManager;
+    info!("Using pipe: {}", &args.pipe);
     let mut server = NamedPipeServerManager::new(args.pipe);
-    loop {
+    //loop {
+        info!("test");
         // A client has connected to the server
         let mut pipe_stream = server.accept().await.unwrap();
         // Each Pipe Stream should have its own TCP Connection
         // This makes it easier to logically read and write code
-        let mut tcp_stream = TcpStream::connect(&args.tcp).await.unwrap();
+        //let mut tcp_stream = TcpStream::connect(&args.tcp).await.unwrap();
+        info!("Binding {}", &args.tcp);
+        let tcp_port = TcpListener::bind(&args.tcp).await.unwrap();
+
+        let mut atcp_stream = TcpListener::accept(&tcp_port).await.unwrap();
         // Spawn a new Future to achieve concurrency
         tokio::spawn(async move {
             // Each connection should have its own Buffer
             let mut buf = vec![0; 1024 * 8];
             // Note that even if this returns an error we do not really care
             // The only reason the let exists here is so we do not get warnings
-            let _ = splice(&mut pipe_stream, &mut tcp_stream, &mut buf).await;
+            let _ = splice(&mut pipe_stream, &mut atcp_stream.0, &mut buf).await;
         });
-    }
+   // }
 }
