@@ -9,7 +9,6 @@
 use tokio::io;
 use tokio::net::windows::named_pipe::{self, ClientOptions, NamedPipeClient, NamedPipeServer};
 use tracing::*;
-use tokio::io::Interest;
 
 /// Creates and manages client connections for Named Pipe servers
 /// # Note
